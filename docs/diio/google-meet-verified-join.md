@@ -168,3 +168,41 @@ Applies to the anonymous fallback and as belt-and-braces for signed-in bots.
 - Compliance: the bot keeps its name, logo and the disclaimer chat message. A Workspace
   service account named `diio` is what Google describes for a verified third-party
   participant; nothing here hides that a recorder is in the call.
+
+## Update 2026-11-04: identity is not the signal
+
+With the Workspace, SSO profile and login group in place, the signed-in bot still landed in the
+"With potential risks" queue with a robot badge next to its avatar. Recall's bots in the same
+meetings are anonymous and get no badge. So Google is reading something in the Attendee bot's
+browser or network, not its account.
+
+The strongest Attendee-specific suspect is page-level tampering by the injected payload:
+`window.RTCPeerConnection` and `window.fetch` are replaced with plain functions (non-native
+`toString`, foreign `prototype`, `instanceof` fails), `getUserMedia` and `getDisplayMedia` are
+shadowed as own properties on `navigator.mediaDevices`, `RTCRtpReceiver.prototype` is patched,
+and a dozen helpers are exposed on `window`. Recall's published Meet bot touches none of these.
+
+### Join-only diagnostic mode
+
+`JOIN_ONLY_DIAGNOSTIC_MODE=true` on the bot pods makes the bot join with none of the above: no
+interceptors, no `window` globals. It still knocks, so the host can see which queue it lands
+in. It does not record, cannot see the roster, and leaves on the only-participant or silence
+timeout; read nothing into its final status.
+
+On staging the bot pods take their env from the `env` ConfigMap, so no manifest change is
+needed:
+
+```bash
+kubectl -n attendee patch configmap env --type merge -p '{"data":{"JOIN_ONLY_DIAGNOSTIC_MODE":"true"}}'
+# send bots, read the queue, then
+kubectl -n attendee patch configmap env --type json -p '[{"op":"remove","path":"/data/JOIN_ONLY_DIAGNOSTIC_MODE"}]'
+```
+
+Building this branch into staging needs the *Deploy Attendee* workflow's `repository` and `ref`
+inputs (Diio-Dev/infrastructure): repository `Diio-Dev/attendee`, ref
+`diio/google-meet-verified-join`, version `v1.89.2-diio.1`.
+
+Decision tree: badge gone in diagnostic mode means the fix is rewriting the interceptors as
+Proxies over the native constructors plus a `Function.prototype.toString` shim. Badge still
+there means the next variants, one per run: fake media devices off, Chrome bumped from 134,
+mouse mode `robotic`.

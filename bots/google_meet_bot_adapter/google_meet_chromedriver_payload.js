@@ -1185,6 +1185,9 @@ class ReceiverManager {
 
 class RTCRtpReceiverInterceptor {
     constructor(onGetContributingSources) {
+        if (window.initialData.joinOnlyDiagnostic) {
+            return;
+        }
         // Store the original getContributingSources method
         const originalGetContributingSources = RTCRtpReceiver.prototype.getContributingSources;
         
@@ -1564,6 +1567,9 @@ class WebSocketClient {
 
 class FetchInterceptor {
     constructor(responseCallback) {
+        if (window.initialData.joinOnlyDiagnostic) {
+            return;
+        }
         this.originalFetch = window.fetch;
         this.responseCallback = responseCallback;
         window.fetch = (...args) => this.interceptFetch(...args);
@@ -1590,6 +1596,9 @@ class FetchInterceptor {
 }
 class RTCInterceptor {
     constructor(callbacks) {
+        if (window.initialData.joinOnlyDiagnostic) {
+            return;
+        }
         // Store the original RTCPeerConnection
         const originalRTCPeerConnection = window.RTCPeerConnection;
         
@@ -1856,7 +1865,10 @@ function createMessageDecoder(messageType) {
 }
 
 const ws = new WebSocketClient();
-window.ws = ws;
+const exposePageGlobals = !window.initialData.joinOnlyDiagnostic;
+if (exposePageGlobals) {
+    window.ws = ws;
+}
 const userManager = new UserManager(ws);
 const captionManager = new CaptionManager(ws);
 const videoTrackManager = new VideoTrackManager(ws);
@@ -1871,13 +1883,15 @@ if (window.initialData.sendPerParticipantAudio || window.initialData.recordParti
     });
 }
 
-window.videoTrackManager = videoTrackManager;
-window.userManager = userManager;
-window.styleManager = styleManager;
-window.receiverManager = receiverManager;
-window.chatMessageManager = chatMessageManager;
-window.participantSpeechStartStopManager = participantSpeechStartStopManager;
-window.sendChatMessage = sendChatMessage;
+if (exposePageGlobals) {
+    window.videoTrackManager = videoTrackManager;
+    window.userManager = userManager;
+    window.styleManager = styleManager;
+    window.receiverManager = receiverManager;
+    window.chatMessageManager = chatMessageManager;
+    window.participantSpeechStartStopManager = participantSpeechStartStopManager;
+    window.sendChatMessage = sendChatMessage;
+}
 // Create decoders for all message types
 const messageDecoders = {};
 messageTypes.forEach(type => {
@@ -2664,4 +2678,6 @@ botOutputManager = new BotOutputManager({
     turnOffMic: turnOffMic,
 });
 
-window.botOutputManager = botOutputManager;
+if (exposePageGlobals) {
+    window.botOutputManager = botOutputManager;
+}

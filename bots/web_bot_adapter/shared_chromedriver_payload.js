@@ -565,6 +565,9 @@ class BotOutputManager {
     }
 
     _installGetUserMediaInterceptor() {
+        if (window.initialData.joinOnlyDiagnostic) {
+            return;
+        }
         const self = this;
 
         navigator.mediaDevices.getUserMedia = async function interceptedGetUserMedia(
@@ -634,6 +637,9 @@ class BotOutputManager {
     }
 
     _installGetDisplayMediaInterceptor() {
+        if (window.initialData.joinOnlyDiagnostic) {
+            return;
+        }
         const self = this;
 
         navigator.mediaDevices.getDisplayMedia = async function interceptedGetDisplayMedia(

@@ -796,6 +796,9 @@ class WebBotAdapter(BotAdapter):
                 logger.warning(f"Error running pkill for {user_data_dir}: {e}")
             logger.info(f"Killed processes with user_data_dir {user_data_dir}")
 
+    def join_only_diagnostic_mode_enabled(self):
+        return os.getenv("JOIN_ONLY_DIAGNOSTIC_MODE", "false").lower() == "true"
+
     def init_driver(self):
         self.write_chrome_policies_file()
 
@@ -841,7 +844,7 @@ class WebBotAdapter(BotAdapter):
         self.start_domain_allow_list_listener()
         logger.info(f"web driver server initialized at port {self.driver.service.port}")
 
-        initial_data_code = f"window.initialData = {{websocketPort: {self.websocket_port}, videoFrameWidth: {self.video_frame_size[0]}, videoFrameHeight: {self.video_frame_size[1]}, botName: {json.dumps(self.display_name)}, addClickRipple: {'true' if self.should_create_debug_recording else 'false'}, recordingView: '{self.recording_view}', sendMixedAudio: {'true' if self.add_mixed_audio_chunk_callback else 'false'}, sendPerParticipantAudio: {'true' if self.add_audio_chunk_callback else 'false'}, perParticipantRealtimeVideoConfiguration: {json.dumps(self.per_participant_realtime_video_configuration.to_dict())}, roomSyncSourceParticipantConfiguration: {json.dumps(self.room_sync_source_participant_configuration.to_dict()) if self.room_sync_source_participant_configuration else 'null'}, sendPerParticipantVideo: {'true' if self.add_per_participant_video_frame_callback else 'false'}, collectCaptions: {'true' if self.upsert_caption_callback else 'false'}, recordParticipantSpeechStartStopEvents: {'true' if self.record_participant_speech_start_stop_events else 'false'}}}"
+        initial_data_code = f"window.initialData = {{websocketPort: {self.websocket_port}, videoFrameWidth: {self.video_frame_size[0]}, videoFrameHeight: {self.video_frame_size[1]}, botName: {json.dumps(self.display_name)}, addClickRipple: {'true' if self.should_create_debug_recording else 'false'}, recordingView: '{self.recording_view}', sendMixedAudio: {'true' if self.add_mixed_audio_chunk_callback else 'false'}, sendPerParticipantAudio: {'true' if self.add_audio_chunk_callback else 'false'}, perParticipantRealtimeVideoConfiguration: {json.dumps(self.per_participant_realtime_video_configuration.to_dict())}, roomSyncSourceParticipantConfiguration: {json.dumps(self.room_sync_source_participant_configuration.to_dict()) if self.room_sync_source_participant_configuration else 'null'}, sendPerParticipantVideo: {'true' if self.add_per_participant_video_frame_callback else 'false'}, collectCaptions: {'true' if self.upsert_caption_callback else 'false'}, recordParticipantSpeechStartStopEvents: {'true' if self.record_participant_speech_start_stop_events else 'false'}, joinOnlyDiagnostic: {'true' if self.join_only_diagnostic_mode_enabled() else 'false'}}}"
 
         # Get directory of current file
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -1410,7 +1413,7 @@ class WebBotAdapter(BotAdapter):
         self.driver.execute_script(
             """
             const bytes = new Uint8Array(arguments[0]);
-            window.botOutputManager.displayImage(bytes);
+            window.botOutputManager?.displayImage(bytes);
         """,
             list(image_bytes),
         )
