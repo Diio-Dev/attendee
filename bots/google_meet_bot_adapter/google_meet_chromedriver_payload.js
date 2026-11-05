@@ -1220,6 +1220,7 @@ class WebSocketClient {
       this.wsUrl = `ws://localhost:${window.initialData.websocketPort}`;
       console.log('WebSocketClient url', this.wsUrl);
       this.ws = null;
+      this.pendingJson = [];
       this.mediaSendingEnabled = false;
   }
 
@@ -1233,6 +1234,9 @@ class WebSocketClient {
       
       this.ws.onopen = () => {
           console.log('WebSocket Connected');
+          for (const data of this.pendingJson.splice(0)) {
+              this.sendJsonNow(data);
+          }
       };
       
       this.ws.onmessage = (event) => {
@@ -1348,6 +1352,14 @@ class WebSocketClient {
   
   sendJson(data) {
       this.ensureConnected();
+      if (this.ws.readyState === WebSocket.CONNECTING) {
+          this.pendingJson.push(data);
+          return;
+      }
+      this.sendJsonNow(data);
+  }
+
+  sendJsonNow(data) {
       if (this.ws.readyState !== WebSocket.OPEN) {
           console.error('WebSocket is not connected');
           return;
