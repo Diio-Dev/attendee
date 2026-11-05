@@ -206,3 +206,32 @@ Decision tree: badge gone in diagnostic mode means the fix is rewriting the inte
 Proxies over the native constructors plus a `Function.prototype.toString` shim. Badge still
 there means the next variants, one per run: fake media devices off, Chrome bumped from 134,
 mouse mode `robotic`.
+
+## Update 2026-11-05: payload tampering ruled out, Chrome build is next
+
+Run 1 (image `v1.89.2-diio.1`, `JOIN_ONLY_DIAGNOSTIC_MODE=true`, signed-in bot): badge again.
+So neither the injected page overrides nor the chromedriver marker is the signal.
+
+Upstream's own evasion branch (attendee-labs/attendee#762) upgraded Chrome to 144; the merge into
+the public tree (#847) left that out and main still ships Chrome 134 from March 2025. The hosted
+service most likely runs current Chrome. This branch now builds Chrome 157 with the lazily
+connected page WebSocket from #762.
+
+### Run order, one variable per run
+
+| Run | Image | ConfigMap keys | API request |
+|---|---|---|---|
+| 2 | `v1.89.2-diio.2` (Chrome 157) | `JOIN_ONLY_DIAGNOSTIC_MODE=true` | as run 1 |
+| 3 | same | + `WEB_BOT_DISABLE_FAKE_MEDIA_DEVICES=true` | as run 1 |
+| 4 | same | + `WEB_BOT_KEEP_GPU=true` | as run 1 |
+| 5 | same | as run 4 | `google_meet_settings.ui_interaction_mode: "humanized"` (run 1 defaulted to `robotic` because `login_mode` was `always`) |
+
+Each bot's dashboard log starts with a `Diagnostic switches:` line that records the mode it ran
+in. Remove every diagnostic key from the ConfigMap before any real traffic goes to this
+environment: `JOIN_ONLY_DIAGNOSTIC_MODE` leaves bots recording-blind.
+
+If run 2 clears the badge, the fix is the Chrome upgrade itself, and the remaining work is to
+confirm recording still works on 157 (the lazy WebSocket, captions, per-participant audio) and to
+decide whether to pin or track stable. If none of the runs clear it, what is left is the CDP
+session itself (Selenium over chromedriver) and the AWS egress IP, which both need a different
+kind of experiment.
