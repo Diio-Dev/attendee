@@ -98,6 +98,7 @@ class WebBotAdapter(BotAdapter):
         self.left_meeting = False
         self.was_removed_from_meeting = False
         self.remover = None
+        self.detected_as_bot = None
         self.cleaned_up = False
 
         self.websocket_port = None
@@ -350,6 +351,11 @@ class WebBotAdapter(BotAdapter):
         else:
             self.only_one_participant_in_meeting_at = None
 
+    def handle_bot_detection_result(self, json_data):
+        self.detected_as_bot = bool(json_data.get("detectedAsBot"))
+        logger.info(f"Meeting platform bot detection result: detected_as_bot={self.detected_as_bot}")
+        self.send_message_callback({"message": self.Messages.BOT_DETECTION_RESULT, "detected_as_bot": self.detected_as_bot})
+
     def handle_remover_data(self, json_data):
         # A meeting status change names the participant who removed us when it knows who that was.
         if not json_data.get("remover"):
@@ -503,6 +509,9 @@ class WebBotAdapter(BotAdapter):
                         elif json_data.get("type") == "ClosedCaptionStatusChange":
                             if json_data.get("change") == "save_caption_not_allowed":
                                 self.could_not_enable_closed_captions()
+
+                        elif json_data.get("type") == "CreateMeetingDeviceResponse":
+                            self.handle_bot_detection_result(json_data)
 
                 elif message_type == 2:  # VIDEO
                     self.process_video_frame(message)

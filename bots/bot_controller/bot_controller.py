@@ -28,6 +28,7 @@ from bots.models import (
     BotChatMessageRequestManager,
     BotChatMessageRequestStates,
     BotDebugScreenshot,
+    BotEvent,
     BotEventManager,
     BotEventSubTypes,
     BotEventTypes,
@@ -836,6 +837,7 @@ class BotController:
     def __init__(self, bot_id):
         self.bot_in_db = Bot.objects.get(id=bot_id)
         self.cleanup_called = False
+        self.detected_as_bot = None
         self.run_called = False
 
         self.redis_client = None
@@ -1172,6 +1174,19 @@ class BotController:
             event_metadata={"source": BotCreationSource.SCHEDULER},
         )
         self.take_action_based_on_bot_in_db()
+
+    def bot_detection_event_metadata(self):
+        if self.detected_as_bot is None:
+            return None
+        return {"detected_as_bot": self.detected_as_bot}
+
+    def record_bot_detection_result(self, detected_as_bot):
+        self.detected_as_bot = detected_as_bot
+        logger.info(f"Bot detection result received: detected_as_bot={detected_as_bot}")
+        join_event = self.bot_in_db.bot_events.filter(event_type__in=[BotEventTypes.BOT_PUT_IN_WAITING_ROOM, BotEventTypes.BOT_JOINED_MEETING]).order_by("-created_at").first()
+        if join_event is None:
+            return
+        BotEvent.objects.filter(id=join_event.id).update(metadata={**(join_event.metadata or {}), "detected_as_bot": detected_as_bot})
 
     def get_participant(self, participant_id):
         return self.adapter.get_participant(participant_id)
@@ -2288,11 +2303,15 @@ class BotController:
             self.cleanup()
             return
 
+        if message.get("message") == BotAdapter.Messages.BOT_DETECTION_RESULT:
+            self.record_bot_detection_result(message.get("detected_as_bot"))
+            return
+
         if message.get("message") == BotAdapter.Messages.BOT_PUT_IN_WAITING_ROOM:
             logger.info("Received message to put bot in waiting room")
             # Being put in the waiting room is a "cosmetic" event. so it's okay if it fails to record.
             try:
-                BotEventManager.create_event(bot=self.bot_in_db, event_type=BotEventTypes.BOT_PUT_IN_WAITING_ROOM)
+                BotEventManager.create_event(bot=self.bot_in_db, event_type=BotEventTypes.BOT_PUT_IN_WAITING_ROOM, event_metadata=self.bot_detection_event_metadata())
             except Exception:
                 logger.exception("Could not record the bot as put in waiting room, continuing")
             return
@@ -2309,7 +2328,7 @@ class BotController:
                 return
 
             logger.info("Received message that bot joined meeting")
-            BotEventManager.create_event(bot=self.bot_in_db, event_type=BotEventTypes.BOT_JOINED_MEETING)
+            BotEventManager.create_event(bot=self.bot_in_db, event_type=BotEventTypes.BOT_JOINED_MEETING, event_metadata=self.bot_detection_event_metadata())
             return
 
         if message.get("message") == BotAdapter.Messages.READY_TO_SEND_CHAT_MESSAGE:
