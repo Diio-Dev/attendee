@@ -1220,6 +1220,7 @@ class WebSocketClient {
       this.wsUrl = `ws://localhost:${window.initialData.websocketPort}`;
       console.log('WebSocketClient url', this.wsUrl);
       this.ws = null;
+      this.pendingJson = [];
       this.mediaSendingEnabled = false;
   }
 
@@ -1233,6 +1234,9 @@ class WebSocketClient {
       
       this.ws.onopen = () => {
           console.log('WebSocket Connected');
+          for (const data of this.pendingJson.splice(0)) {
+              this.sendJsonNow(data);
+          }
       };
       
       this.ws.onmessage = (event) => {
@@ -1348,6 +1352,14 @@ class WebSocketClient {
   
   sendJson(data) {
       this.ensureConnected();
+      if (this.ws.readyState === WebSocket.CONNECTING) {
+          this.pendingJson.push(data);
+          return;
+      }
+      this.sendJsonNow(data);
+  }
+
+  sendJsonNow(data) {
       if (this.ws.readyState !== WebSocket.OPEN) {
           console.error('WebSocket is not connected');
           return;
@@ -1813,6 +1825,12 @@ const messageTypes = [
         fields: [
             { name: 'text', fieldNumber: 1, type: 'string' }
         ]
+    },
+    {
+        name: 'CreateMeetingDeviceResponse',
+        fields: [
+            { name: 'detectedAsBot', fieldNumber: 36, type: 'varint' }
+        ]
     }
 ];
 
@@ -1908,6 +1926,7 @@ function base64ToUint8Array(base64) {
 }
 
 const syncMeetingSpaceCollectionsUrl = "https://meet.google.com/$rpc/google.rtc.meetings.v1.MeetingSpaceService/SyncMeetingSpaceCollections";
+const createMeetingDeviceUrl = "https://meet.google.com/$rpc/google.rtc.meetings.v1.MeetingDeviceService/CreateMeetingDevice";
 const userMap = new Map();
 new FetchInterceptor(async (response) => {
     if (response.url === syncMeetingSpaceCollectionsUrl) {
@@ -1919,6 +1938,19 @@ new FetchInterceptor(async (response) => {
         if (userInfoList.length > 0) {
             userManager.newUsersListSynced(userInfoList);
         }
+    }
+    if (response.url === createMeetingDeviceUrl) {
+        if (!response.ok)
+            return;
+        const responseText = await response.text();
+        const decodedData = base64ToUint8Array(responseText);
+        const createDeviceResponse = messageDecoders['CreateMeetingDeviceResponse'](decodedData);
+        const detectedAsBot = Boolean(createDeviceResponse.detectedAsBot);
+        console.log('detectedAsBot', detectedAsBot);
+        window.ws?.sendJson({
+            type: 'CreateMeetingDeviceResponse',
+            detectedAsBot: detectedAsBot,
+        });
     }
 });
 
