@@ -1940,19 +1940,17 @@ new FetchInterceptor(async (response) => {
         }
     }
     if (response.url === createMeetingDeviceUrl) {
-        setTimeout( async () => {
-            if (!response.ok)
-                return;
-            const responseText = await response.text();
-            const decodedData = base64ToUint8Array(responseText);
-            const createDeviceResponse = messageDecoders['CreateMeetingDeviceResponse'](decodedData);
-            const detectedAsBot = Boolean(createDeviceResponse.detectedAsBot);
-            console.log('detectedAsBot', detectedAsBot);
-            window.ws?.sendJson({
-                type: 'CreateMeetingDeviceResponse',
-                detectedAsBot: detectedAsBot,
-            });
-        }, 2000);
+        if (!response.ok)
+            return;
+        const responseText = await response.text();
+        const decodedData = base64ToUint8Array(responseText);
+        const createDeviceResponse = messageDecoders['CreateMeetingDeviceResponse'](decodedData);
+        const detectedAsBot = Boolean(createDeviceResponse.detectedAsBot);
+        console.log('detectedAsBot', detectedAsBot);
+        window.ws?.sendJson({
+            type: 'CreateMeetingDeviceResponse',
+            detectedAsBot: detectedAsBot,
+        });
     }
 });
 
