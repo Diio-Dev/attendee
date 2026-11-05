@@ -799,18 +799,29 @@ class WebBotAdapter(BotAdapter):
     def join_only_diagnostic_mode_enabled(self):
         return os.getenv("JOIN_ONLY_DIAGNOSTIC_MODE", "false").lower() == "true"
 
+    def fake_media_devices_disabled(self):
+        return os.getenv("WEB_BOT_DISABLE_FAKE_MEDIA_DEVICES", "false").lower() == "true"
+
+    def gpu_kept_enabled(self):
+        return os.getenv("WEB_BOT_KEEP_GPU", "false").lower() == "true"
+
+    def log_diagnostic_switches(self):
+        logger.info(f"Diagnostic switches: join_only={self.join_only_diagnostic_mode_enabled()} fake_media_devices_disabled={self.fake_media_devices_disabled()} gpu_kept_enabled={self.gpu_kept_enabled()}")
+
     def init_driver(self):
         self.write_chrome_policies_file()
 
         options = webdriver.ChromeOptions()
 
+        self.log_diagnostic_switches()
         options.add_argument("--autoplay-policy=no-user-gesture-required")
-        options.add_argument("--use-fake-device-for-media-stream")
+        if not self.fake_media_devices_disabled():
+            options.add_argument("--use-fake-device-for-media-stream")
         options.add_argument("--use-fake-ui-for-media-stream")
         options.add_argument(f"--window-size={self.video_frame_size[0]},{self.video_frame_size[1]}")
         options.add_argument("--start-fullscreen")
         # options.add_argument('--headless=new')
-        if self.subclass_specific_use_disable_gpu_chrome_option():
+        if self.subclass_specific_use_disable_gpu_chrome_option() and not self.gpu_kept_enabled():
             options.add_argument("--disable-gpu")
         options.add_argument("--disable-extensions")
         options.add_argument("--disable-application-cache")
