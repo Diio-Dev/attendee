@@ -235,3 +235,24 @@ confirm recording still works on 157 (the lazy WebSocket, captions, per-particip
 decide whether to pin or track stable. If none of the runs clear it, what is left is the CDP
 session itself (Selenium over chromedriver) and the AWS egress IP, which both need a different
 kind of experiment.
+
+## Result 2026-11-05: the signal is pointer behaviour
+
+Run 2 (Chrome 157, diagnostic mode, signed-in): badge again. Run 3, same request plus
+`google_meet_settings.ui_interaction_mode: "humanized"`: **no badge**.
+
+Runs 1 and 2 had silently run in `robotic` mode: the serializer defaulted to it whenever
+`use_login` was true and `login_mode` was `always`, on the theory that signed-in bots did not
+need it. In robotic mode the pointer never moves; clicks arrive through chromedriver with no
+motion. Google's anti-abuse layer scores that as automation whatever the account, browser build,
+page overrides or egress IP. That default is removed on this branch: every Google Meet bot is
+humanized unless the request says otherwise.
+
+Everything else tested was not the signal: identity (signed-in Workspace account), the injected
+payload's native-API overrides, the chromedriver `cdc_` marker, the Chrome build (134 vs 157),
+and the network (Recall's unbadged bots also run on AWS, one EC2 instance per bot).
+
+What stays on this branch beyond the default change is unvalidated for recording: Chrome 157
+with the lazy WebSocket, the marker strip, and the diagnostic switches. Validate a full recording
+on staging before production depends on this image; upstream `v1.89.2` plus an explicit
+`ui_interaction_mode: "humanized"` from diio is the proven combination today.
