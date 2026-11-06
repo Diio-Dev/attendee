@@ -1221,18 +1221,36 @@ class WebSocketClient {
       console.log('WebSocketClient url', this.wsUrl);
       this.ws = null;
       this.mediaSendingEnabled = false;
+      // JSON messages sent while the socket is still connecting. Media frames are not
+      // queued, but JSON events like ChatStatusChange fire only once and must not be lost.
+      this.pendingJsonMessages = [];
+      this.maxPendingJsonMessages = 500;
+      this.lastConnectAttemptAt = 0;
   }
 
   ensureConnected() {
-      if (this.ws !== null) {
+      // Reconnect if the socket was never opened, or was closed / refused
+      if (this.ws !== null && (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN)) {
           return;
       }
 
+      // Media frames call this many times per second, so don't hammer a refused socket
+      const now = performance.now();
+      if (this.ws !== null && now - this.lastConnectAttemptAt < 1000) {
+          return;
+      }
+      this.lastConnectAttemptAt = now;
+
       this.ws = new WebSocket(this.wsUrl);
       this.ws.binaryType = 'arraybuffer';
-      
+
       this.ws.onopen = () => {
           console.log('WebSocket Connected');
+          const pendingJsonMessages = this.pendingJsonMessages;
+          this.pendingJsonMessages = [];
+          for (const message of pendingJsonMessages) {
+              this.ws.send(message);
+          }
       };
       
       this.ws.onmessage = (event) => {
@@ -1348,10 +1366,6 @@ class WebSocketClient {
   
   sendJson(data) {
       this.ensureConnected();
-      if (this.ws.readyState !== WebSocket.OPEN) {
-          console.error('WebSocket is not connected');
-          return;
-      }
 
       try {
           // Convert JSON to string then to Uint8Array
@@ -1366,7 +1380,16 @@ class WebSocketClient {
           
           // Copy JSON data after type
           message.set(jsonBytes, 4);
-          
+
+          if (this.ws.readyState !== WebSocket.OPEN) {
+              console.error('WebSocket is not connected, queueing JSON message');
+              if (this.pendingJsonMessages.length >= this.maxPendingJsonMessages) {
+                  this.pendingJsonMessages.shift();
+              }
+              this.pendingJsonMessages.push(message.buffer);
+              return;
+          }
+
           // Send the binary message
           this.ws.send(message.buffer);
       } catch (error) {

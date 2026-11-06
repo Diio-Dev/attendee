@@ -144,6 +144,9 @@ class GoogleMeetBotAdapter(WebBotAdapter, GoogleMeetUIMethods):
 
         return chrome_policies
 
+    def subclass_specific_local_network_access_allowed_urls(self):
+        return ["https://meet.google.com"]
+
     def subclass_specific_before_driver_close(self, driver):
         if self.google_meet_bot_login_session:
             logger.info("Navigating to the logout page to sign out of the Google account")
