@@ -689,12 +689,21 @@ class WebBotAdapter(BotAdapter):
     def subclass_specific_chrome_policies(self):
         return {}
 
+    # Origins whose pages may open the payload's ws://localhost connection to the bot.
+    # Chrome 147+ puts WebSocket connections from a public page to localhost behind the
+    # Local Network Access permission, and nobody is there to grant it in a bot.
+    def subclass_specific_local_network_access_allowed_urls(self):
+        return []
+
     def write_chrome_policies_file(self):
         # Check if the /etc/.../attendee-chrome-policies.json symlink exists. If not, skip this, we are not running in the docker container.
         if not os.path.islink("/etc/opt/chrome/policies/managed/attendee-chrome-policies.json"):
             logger.warning("Attendee chrome policy file symlink does not exist, skipping writing chrome policies.")
             return
         policy = self.subclass_specific_chrome_policies()
+        local_network_access_allowed_urls = self.subclass_specific_local_network_access_allowed_urls()
+        if local_network_access_allowed_urls:
+            policy = {**policy, "LocalNetworkAccessAllowedForUrls": local_network_access_allowed_urls}
         with open("/tmp/attendee-chrome-policies.json", "w") as f:
             json.dump(policy, f, indent=2)
         logger.info("Chrome policy file written to /tmp/attendee-chrome-policies.json: %s", policy)
