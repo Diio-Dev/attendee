@@ -24,6 +24,23 @@ if (window.googleMeetInitialData.disableIncomingVideo) {
     disableIncomingVideoViaLocalStorage();
 }
 
+const hideReceiverCreateEncodedStreamsSupport = () => {
+    const receiverPrototype = window.RTCRtpReceiver?.prototype;
+
+    if (!receiverPrototype) {
+        return;
+    }
+
+    try {
+        delete receiverPrototype.createEncodedStreams;
+        console.log("RTCRtpReceiver.prototype.createEncodedStreams now reports as unsupported");
+    } catch (error) {
+        console.log("Failed to delete RTCRtpReceiver.prototype.createEncodedStreams", error);
+    }
+};
+
+hideReceiverCreateEncodedStreamsSupport();
+
 const handleVideoTrackForRealTimePerParticipantVideo = async ({ track, streams }) => {
     try {
         const firstStreamId = streams?.[0]?.id;
