@@ -44,6 +44,7 @@ from bots.models import (
     WebhookSubscription,
     WebhookTriggerTypes,
 )
+from bots.serializers import BotSerializer
 from bots.tests.mock_data import create_mock_file_uploader, create_mock_google_meet_driver
 from bots.web_bot_adapter.ui_methods import UiLoginRequiredException, UiRetryableException
 from bots.web_bot_adapter.web_bot_adapter import WebBotAdapter
@@ -2124,6 +2125,15 @@ class TestGoogleMeetBot2(TransactionTestCase):
             time.sleep(0.1)
         self.fail(f"Bot never reached state {BotStates.state_to_api_code(expected_state)}. Current state: {BotStates.state_to_api_code(self.bot.state)}")
 
+    def _wait_for_event_metadata(self, event_type, expected_metadata, timeout_seconds=10):
+        deadline = time.time() + timeout_seconds
+        while time.time() < deadline:
+            event = self.bot.bot_events.filter(event_type=event_type).first()
+            if event is not None and event.metadata == expected_metadata:
+                return
+            time.sleep(0.1)
+        self.fail(f"Event {event_type} never got metadata {expected_metadata}")
+
     def _request_leave_like_api(self, controller):
         BotEventManager.create_event(bot=self.bot, event_type=BotEventTypes.LEAVE_REQUESTED, event_sub_type=BotEventSubTypes.LEAVE_REQUESTED_USER_REQUESTED)
         controller.handle_redis_message({"type": "message", "data": json.dumps({"command": "sync"}).encode("utf-8")})
@@ -2257,6 +2267,64 @@ class TestGoogleMeetBot2(TransactionTestCase):
         self.assertEqual(could_not_join_event.new_state, BotStates.FATAL_ERROR)
         self.assertEqual(could_not_join_event.event_sub_type, BotEventSubTypes.COULD_NOT_JOIN_MEETING_LEAVE_REQUESTED_BEFORE_BOT_JOINED)
         self.assertEqual(could_not_join_event.metadata["state_when_leave_requested"], "waiting_room")
+
+    @override_settings(PREJOIN_LEAVE_OR_MEETING_END_IS_FATAL_ERROR=True)
+    @patch("bots.models.Bot.create_debug_recording", return_value=False)
+    @patch("bots.web_bot_adapter.web_bot_adapter.Display")
+    @patch("bots.web_bot_adapter.web_bot_adapter.webdriver.Chrome")
+    @patch("bots.bot_controller.bot_controller.AzureFileUploader")
+    def test_bot_detection_result_received_before_waiting_room_is_attached_to_the_event(
+        self,
+        MockFileUploader,
+        MockChromeDriver,
+        MockDisplay,
+        mock_create_debug_recording,
+    ):
+        MockFileUploader.return_value = create_mock_file_uploader()
+        MockChromeDriver.return_value = create_mock_google_meet_driver()
+        MockDisplay.return_value = MagicMock()
+
+        controller, bot_thread, release_join_attempt = self._start_bot_that_is_stuck_joining()
+
+        controller.adapter.send_message_callback({"message": BotAdapter.Messages.BOT_DETECTION_RESULT, "detected_as_bot": True})
+        controller.adapter.send_message_callback({"message": BotAdapter.Messages.BOT_PUT_IN_WAITING_ROOM})
+        self._wait_for_bot_state(BotStates.WAITING_ROOM)
+
+        self._request_leave_like_api(controller)
+        self._finish_bot(controller, bot_thread, release_join_attempt)
+
+        waiting_room_event = self.bot.bot_events.get(event_type=BotEventTypes.BOT_PUT_IN_WAITING_ROOM)
+        self.assertEqual(waiting_room_event.metadata, {"detected_as_bot": True})
+
+        serialized_waiting_room_event = next(event for event in BotSerializer(self.bot).data["events"] if event["type"] == BotEventTypes.type_to_api_code(BotEventTypes.BOT_PUT_IN_WAITING_ROOM))
+        self.assertIs(serialized_waiting_room_event["detected_as_bot"], True)
+
+    @override_settings(PREJOIN_LEAVE_OR_MEETING_END_IS_FATAL_ERROR=True)
+    @patch("bots.models.Bot.create_debug_recording", return_value=False)
+    @patch("bots.web_bot_adapter.web_bot_adapter.Display")
+    @patch("bots.web_bot_adapter.web_bot_adapter.webdriver.Chrome")
+    @patch("bots.bot_controller.bot_controller.AzureFileUploader")
+    def test_bot_detection_result_received_after_waiting_room_updates_the_event(
+        self,
+        MockFileUploader,
+        MockChromeDriver,
+        MockDisplay,
+        mock_create_debug_recording,
+    ):
+        MockFileUploader.return_value = create_mock_file_uploader()
+        MockChromeDriver.return_value = create_mock_google_meet_driver()
+        MockDisplay.return_value = MagicMock()
+
+        controller, bot_thread, release_join_attempt = self._start_bot_that_is_stuck_joining()
+
+        controller.adapter.send_message_callback({"message": BotAdapter.Messages.BOT_PUT_IN_WAITING_ROOM})
+        self._wait_for_bot_state(BotStates.WAITING_ROOM)
+
+        controller.adapter.send_message_callback({"message": BotAdapter.Messages.BOT_DETECTION_RESULT, "detected_as_bot": False})
+        self._wait_for_event_metadata(BotEventTypes.BOT_PUT_IN_WAITING_ROOM, {"detected_as_bot": False})
+
+        self._request_leave_like_api(controller)
+        self._finish_bot(controller, bot_thread, release_join_attempt)
 
     @override_settings(PREJOIN_LEAVE_OR_MEETING_END_IS_FATAL_ERROR=True)
     @patch("bots.models.Bot.create_debug_recording", return_value=False)

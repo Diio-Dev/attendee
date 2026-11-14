@@ -1937,6 +1937,7 @@ class BotSerializer(serializers.ModelSerializer):
                     "type": {"type": "string"},
                     "sub_type": {"type": "string", "nullable": True},
                     "created_at": {"type": "string", "format": "date-time"},
+                    "detected_as_bot": {"type": "boolean", "description": "Whether the meeting platform flagged the bot as automated when it asked to join. Only present when the platform reports it (Google Meet)."},
                 },
             },
         }
@@ -1949,6 +1950,9 @@ class BotSerializer(serializers.ModelSerializer):
 
             if event.event_sub_type:
                 event_data["sub_type"] = BotEventSubTypes.sub_type_to_api_code(event.event_sub_type)
+
+            if isinstance(event.metadata, dict) and "detected_as_bot" in event.metadata:
+                event_data["detected_as_bot"] = event.metadata["detected_as_bot"]
 
             events.append(event_data)
         return events
