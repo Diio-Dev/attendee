@@ -334,6 +334,7 @@ class SignupMailgunValidationTest(TransactionTestCase):
 @override_settings(
     SOCIALACCOUNT_LOGIN_ON_GET=True,  # auto-log users in on GET callback
     LOGIN_REDIRECT_URL="/",  # where allauth should send us after login
+    SOCIALACCOUNT_PROVIDERS={},  # this test configures Google via a DB SocialApp, not GOOGLE_OAUTH_* env vars
 )
 class GoogleSocialLoginHappyPathTest(TransactionTestCase):
     """End-to-end happy-path test for Google OAuth2 login"""
