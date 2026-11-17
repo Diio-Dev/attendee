@@ -110,6 +110,23 @@ This document lists all supported environment variables for the Attendee applica
 | `DJANGO_SSL_REQUIRE` | Boolean | `true` | Require HTTPS connections in production. Set to `false` for local development. |
 | `ENABLE_GRANULAR_PERMISSIONS` | Boolean | `false` | Expose granular per-project permissions (viewing recording content, managing API keys) in the team management UI. When `false`, non-admin users are granted both permissions for every project they can access. |
 | `ENABLE_VIEWING_RECORDING_CONTENT` | Boolean | `true` | Allow viewing recording content (recordings, transcripts, chat messages) in the dashboard. When `false`, no user can view recording content, including admins. |
+| `GOOGLE_OAUTH_CLIENT_ID` | String | (None) | OAuth client ID for "Sign in with Google" on the login and signup pages. Google login is enabled only when both this and `GOOGLE_OAUTH_CLIENT_SECRET` are set; otherwise the button is hidden. See [Sign in with Google](#sign-in-with-google). |
+| `GOOGLE_OAUTH_CLIENT_SECRET` | String | (None) | OAuth client secret matching `GOOGLE_OAUTH_CLIENT_ID`. |
+
+### Sign in with Google
+
+1. In Google Cloud Console, go to **APIs & Services → Credentials → Create credentials → OAuth client ID** and choose **Web application**. If prompted, configure the OAuth consent screen first; the app only requests the `email` and `profile` scopes, which don't need Google verification.
+2. Under **Authorized redirect URIs**, add `https://<SITE_DOMAIN>/accounts/google/login/callback/` (for local development, `http://localhost:8000/accounts/google/login/callback/`).
+3. Set `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET` and restart the app. The "Sign in with Google" / "Sign up with Google" buttons appear on the login and signup pages.
+
+How it behaves:
+
+- A first-time Google sign-in creates a new user with its own organization and project, the same as email/password signup. No confirmation email is sent, because Google has already verified the address. `DISABLE_SIGNUP` blocks Google signups too.
+- If an account already exists with the same email, the Google sign-in logs into that account and links the Google account to it instead of creating a duplicate. This only happens when Google reports the email as verified. If the existing account's email was never confirmed, its password is removed (so whoever registered the address without confirming it can no longer use that password) and the user is asked to confirm the address by email before signing in.
+- Invited users can sign in with Google before opening their invite link. Google confirming the invited address counts the same as opening the link, and they join the inviting organization.
+- Email/password login keeps working alongside Google.
+- With `ENABLE_CSP=true`, `https://accounts.google.com` is added to the `form-action` directive automatically when Google login is enabled.
+- Configure Google either with these env vars or with a Google "Social application" in the Django admin, not both: allauth refuses to pick between two Google apps and the login fails.
 
 ---
 

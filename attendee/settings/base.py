@@ -18,6 +18,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from attendee.sentry import init_sentry
+from attendee.settings.google_oauth import socialaccount_providers_from_env
 
 load_dotenv()
 
@@ -78,8 +79,16 @@ ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 SOCIALACCOUNT_QUERY_EMAIL = True
 SOCIALACCOUNT_ENABLED = True
 SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
+# When a Google login matches an existing account by verified email, attach the Google
+# account to it so later logins match on the Google account id rather than on email.
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
+SOCIALACCOUNT_ADAPTER = "accounts.adapters.SocialAccountAdapter"
 SOCIALACCOUNT_LOGIN_ON_GET = False
 SOCIALACCOUNT_EMAIL_REQUIRED = True
+# "Sign in with Google" is enabled only when GOOGLE_OAUTH_CLIENT_ID and
+# GOOGLE_OAUTH_CLIENT_SECRET are both set. See docs/environment-variables.md.
+SOCIALACCOUNT_PROVIDERS = socialaccount_providers_from_env()
+GOOGLE_OAUTH_ENABLED = bool(SOCIALACCOUNT_PROVIDERS.get("google"))
 
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 STATIC_URL = "static/"
@@ -434,7 +443,9 @@ if os.getenv("ENABLE_CSP", "false") == "true":
             "connect-src": ["'self'", "https://cdn.jsdelivr.net"],
             "frame-src": ["https://www.loom.com"],
             "base-uri": ["'self'"],
-            "form-action": ["'self'", "https://*.stripe.com"],
+            # The Google button posts to our own login URL, which then redirects to Google;
+            # browsers check that redirect against form-action too.
+            "form-action": ["'self'", "https://*.stripe.com"] + (["https://accounts.google.com"] if GOOGLE_OAUTH_ENABLED else []),
         },
     }
 
