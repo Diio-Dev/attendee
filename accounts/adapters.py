@@ -3,7 +3,9 @@ from urllib.parse import quote, urlsplit, urlunsplit
 
 import requests
 from allauth.account.adapter import DefaultAccountAdapter
+from allauth.account.models import EmailAddress
 from allauth.core import context
+from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from django.conf import settings
 from django.contrib.auth import login
 from django.core.exceptions import ValidationError
@@ -221,3 +223,28 @@ class StandardAccountAdapter(DefaultAccountAdapter):
 class NoNewUsersAccountAdapter(StandardAccountAdapter):
     def is_open_for_signup(self, request):
         return False
+
+
+class SocialAccountAdapter(DefaultSocialAccountAdapter):
+    def pre_social_login(self, request, sociallogin):
+        """
+        Lets an invited user who hasn't opened their invite link yet sign in with Google.
+
+        Inviting a user creates the account with an unconfirmed email address and no password;
+        opening the invite link confirms the address. Signing in with Google, with Google
+        vouching for that same address, proves the same thing, so we confirm it here. Otherwise
+        allauth would send them to "confirm your email" instead of logging them in.
+        """
+        super().pre_social_login(request, sociallogin)
+
+        user = sociallogin.user
+        # Only for a social account that isn't linked yet and was matched to an existing invited
+        # user by email (the lookup only matches emails the provider reports as verified).
+        if not user.pk or sociallogin.account.pk or not user.invited_by_id or user.has_usable_password():
+            return
+
+        provider_verified_emails = {address.email.lower() for address in sociallogin.email_addresses if address.verified}
+        for address in EmailAddress.objects.filter(user=user, verified=False):
+            if address.email.lower() in provider_verified_emails:
+                address.set_verified(commit=True)
+                logger.info(f"Confirmed invited user {user.object_id}'s email via {sociallogin.account.provider} sign-in")

@@ -123,6 +123,7 @@ How it behaves:
 
 - A first-time Google sign-in creates a new user with its own organization and project, the same as email/password signup. No confirmation email is sent, because Google has already verified the address. `DISABLE_SIGNUP` blocks Google signups too.
 - If an account already exists with the same email, the Google sign-in logs into that account and links the Google account to it instead of creating a duplicate. This only happens when Google reports the email as verified. If the existing account's email was never confirmed, its password is removed (so whoever registered the address without confirming it can no longer use that password) and the user is asked to confirm the address by email before signing in.
+- Invited users can sign in with Google before opening their invite link. Google confirming the invited address counts the same as opening the link, and they join the inviting organization.
 - Email/password login keeps working alongside Google.
 - With `ENABLE_CSP=true`, `https://accounts.google.com` is added to the `form-action` directive automatically when Google login is enabled.
 - Configure Google either with these env vars or with a Google "Social application" in the Django admin, not both: allauth refuses to pick between two Google apps and the login fails.

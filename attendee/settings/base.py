@@ -82,6 +82,7 @@ SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
 # When a Google login matches an existing account by verified email, attach the Google
 # account to it so later logins match on the Google account id rather than on email.
 SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
+SOCIALACCOUNT_ADAPTER = "accounts.adapters.SocialAccountAdapter"
 SOCIALACCOUNT_LOGIN_ON_GET = False
 SOCIALACCOUNT_EMAIL_REQUIRED = True
 # "Sign in with Google" is enabled only when GOOGLE_OAUTH_CLIENT_ID and

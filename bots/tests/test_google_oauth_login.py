@@ -202,3 +202,43 @@ class GoogleOAuthLoginFlowTest(TransactionTestCase):
         self._google_login(self._userinfo())
 
         self.assertEqual(self._logged_in_user_id(), str(existing.pk))
+
+    def _invite(self):
+        """Create the user the way the team page's invite does: no password, unconfirmed email."""
+        inviter = User.objects.create_user(username="inviter", email=f"inviter-{uuid.uuid4().hex}@example.com", password="inviter-password-123")
+        invited = User.objects.create_user(
+            email=self.email,
+            username=str(uuid.uuid4()),
+            organization=inviter.organization,
+            invited_by=inviter,
+            role=UserRole.REGULAR_USER,
+        )
+        EmailAddress.objects.create(user=invited, email=self.email, verified=False, primary=True)
+        return inviter, invited
+
+    @override_settings(ACCOUNT_ADAPTER="accounts.adapters.NoNewUsersAccountAdapter")
+    def test_invited_user_can_google_login_before_opening_invite_link(self):
+        inviter, invited = self._invite()
+        org_count = Organization.objects.count()
+
+        response = self._google_login(self._userinfo())
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], "/")
+        self.assertEqual(self._logged_in_user_id(), str(invited.pk))
+        self.assertTrue(EmailAddress.objects.get(user=invited, email=self.email).verified)
+        self.assertTrue(SocialAccount.objects.filter(user=invited, provider="google", uid=self.uid).exists())
+        # Still the inviter's organization: no new user, org or project.
+        self.assertEqual(User.objects.filter(email=self.email).count(), 1)
+        self.assertEqual(Organization.objects.count(), org_count)
+        invited.refresh_from_db()
+        self.assertEqual(invited.organization_id, inviter.organization_id)
+
+    def test_unverified_google_email_does_not_confirm_invite(self):
+        _, invited = self._invite()
+
+        self._google_login(self._userinfo(email_verified=False))
+
+        self.assertNotEqual(self._logged_in_user_id(), str(invited.pk))
+        self.assertFalse(EmailAddress.objects.get(user=invited, email=self.email).verified)
+        self.assertFalse(SocialAccount.objects.filter(user=invited).exists())
