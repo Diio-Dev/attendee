@@ -1,0 +1,25 @@
+bots/tests/test_google_oauth_login.py
+  s_8baa0dc2f71c56::t_c5a8bd23affa5f 205-244
+accounts/adapters.py
+  s_8baa0dc2f71c56::t_40dd0f7ebdc2ca 6,8,226-250
+attendee/settings/base.py
+  s_8baa0dc2f71c56::t_40dd0f7ebdc2ca 85
+docs/environment-variables.md
+  s_8baa0dc2f71c56::t_fce3e1e9cffa84 126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "53f0697ff3027ed5fdf79af6d43c631f710caee9",
+  "prompts": {},
+  "sessions": {
+    "s_8baa0dc2f71c56": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "45b723dc-60cb-4080-86c3-9bb3a8d1e14c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Agustin Herrera <agustin.herrera@diio.com>"
+    }
+  }
+}
