@@ -1,0 +1,24 @@
+bots/tests/test_google_meet_captions.py
+  s_c31d89f7d352cb::t_a1c4fed78d3e5d 1-44
+bots/google_meet_bot_adapter/google_meet_ui_methods.py
+  s_c31d89f7d352cb::t_a40196c26f084d 542-548,550,558-560
+  s_c31d89f7d352cb::t_a3f92580fad999 1248
+bots/tests/test_google_meet_bot.py
+  s_c31d89f7d352cb::t_5fb716bf541c13 501-502,505
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "84f919f1f15225f3e70a0df52168927b1fd10e85",
+  "prompts": {},
+  "sessions": {
+    "s_c31d89f7d352cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5046d111-99e2-4083-8c70-42d3aa0107e6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Agustin Herrera <agustin.herrera@diio.com>"
+    }
+  }
+}
