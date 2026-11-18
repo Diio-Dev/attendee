@@ -498,8 +498,11 @@ class TestGoogleMeetBot(TransactionTestCase):
     @patch("bots.google_meet_bot_adapter.google_meet_ui_methods.GoogleMeetUIMethods.locate_element")
     @patch("bots.google_meet_bot_adapter.google_meet_ui_methods.GoogleMeetUIMethods.click_element")
     @patch("time.time")
+    # This test simulates the waiting room via the captions button click failing, so force the caption-enabling path
+    @patch("bots.google_meet_bot_adapter.google_meet_ui_methods.GoogleMeetUIMethods.should_enable_captions", return_value=True)
     def test_bot_stops_after_waiting_room_timeout(
         self,
+        mock_should_enable_captions,
         mock_time,
         mock_click_element,
         mock_locate_element,
