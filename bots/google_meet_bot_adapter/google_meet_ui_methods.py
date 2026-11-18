@@ -587,7 +587,15 @@ class GoogleMeetUIMethods:
         WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'button[aria-label="Captions and translation"][aria-pressed="true"]')))
         logger.info("Confirmed captions were enabled")
 
+    def should_enable_captions(self):
+        # Captions are only needed when we're collecting them (closed-caption transcription).
+        # Turning them on otherwise shrinks the participant grid in the recording for no reason.
+        return self.upsert_caption_callback is not None
+
+    # Waits until the bot is admitted to the meeting (the captions button only appears once in the call),
+    # handling waiting-room / blocked / denied states along the way. Turns captions on only if they're needed.
     def click_captions_button(self):
+        should_enable_captions = self.should_enable_captions()
         num_attempts_to_look_for_captions_button = self.automatic_leave_configuration.waiting_room_timeout_seconds * 2
         logger.info("Waiting for captions button...")
         waiting_room_timeout_started_at = time.time()
@@ -595,6 +603,9 @@ class GoogleMeetUIMethods:
             try:
                 captions_button = WebDriverWait(self.driver, 1).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'button[aria-label="Turn on captions"], button[aria-label="Captions and translation"]')))
                 logger.info("Captions button found")
+                if not should_enable_captions:
+                    logger.info("Captions are not needed for this bot, so not enabling them")
+                    return
                 if captions_button.get_attribute("aria-label") == "Captions and translation":
                     self.enable_captions_via_keyboard_shortcut(captions_button)
                     return
@@ -1282,7 +1293,7 @@ class GoogleMeetUIMethods:
         if self.disable_incoming_video:
             self.disable_incoming_video_in_ui()
 
-        if self.google_meet_closed_captions_language:
+        if self.google_meet_closed_captions_language and self.should_enable_captions():
             self.select_language(self.google_meet_closed_captions_language)
 
         if os.getenv("DO_NOT_RECORD_MEETING_REACTIONS") == "true":
