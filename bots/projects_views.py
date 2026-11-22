@@ -522,7 +522,7 @@ class CreateCredentialsView(LoginRequiredMixin, ProjectUrlContextMixin, View):
             elif credential_type == Credentials.CredentialTypes.EXTERNAL_MEDIA_STORAGE:
                 credentials_data = {"access_key_id": request.POST.get("access_key_id"), "access_key_secret": request.POST.get("access_key_secret"), "endpoint_url": request.POST.get("endpoint_url"), "region_name": request.POST.get("region_name")}
 
-                if not credentials_data.get("access_key_id") or not credentials_data.get("access_key_secret") or (not credentials_data.get("endpoint_url") and not credentials_data.get("region_name")):
+                if bool(credentials_data.get("access_key_id")) != bool(credentials_data.get("access_key_secret")) or (not credentials_data.get("endpoint_url") and not credentials_data.get("region_name")):
                     return HttpResponse("Missing required credentials data", status=400)
             elif credential_type == Credentials.CredentialTypes.TEAMS_BOT_IDENTIFICATION_CREDENTIALS:
                 credentials_data = {

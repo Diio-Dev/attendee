@@ -703,9 +703,9 @@ class BotController:
                 bucket=self.bot_in_db.external_media_storage_bucket_name(),
                 filename=self.bot_in_db.external_media_storage_recording_file_name() or self.get_recording_filename(),
                 endpoint_url=external_media_storage_credentials.get("endpoint_url") or None,
-                region_name=external_media_storage_credentials.get("region_name"),
-                access_key_id=external_media_storage_credentials.get("access_key_id"),
-                access_key_secret=external_media_storage_credentials.get("access_key_secret"),
+                region_name=external_media_storage_credentials.get("region_name") or None,
+                access_key_id=external_media_storage_credentials.get("access_key_id") or None,
+                access_key_secret=external_media_storage_credentials.get("access_key_secret") or None,
             )
             file_uploader.upload_file(self.get_recording_file_location())
             file_uploader.wait_for_upload()
