@@ -1,0 +1,23 @@
+bots/bot_controller/bot_controller.py
+  s_ae571318421914::t_7b46c6a9d08bbd 706-708
+bots/projects_views.py
+  s_ae571318421914::t_8a96002a6890f1 525
+bots/templates/projects/partials/external_media_storage_credentials.html
+  s_ae571318421914::t_bb0dacfddd0115 46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "43aaf18efb14dbdf2dba7f8f80caab38afb9efb4",
+  "prompts": {},
+  "sessions": {
+    "s_ae571318421914": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "16b2f324-bc7d-46a2-b81b-a6cbd4b52905",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Agustin Herrera <agustin.herrera@diio.com>"
+    }
+  }
+}
