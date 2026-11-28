@@ -46,6 +46,8 @@ RUN apt-get update  \
     vim \
     libpq-dev
 
+RUN apt-get -y upgrade
+
 # Install Chrome dependencies
 RUN apt-get install -y xvfb xauth x11-xkb-utils xfonts-100dpi xfonts-75dpi xfonts-scalable xfonts-cyrillic x11-apps libvulkan1 fonts-liberation xdg-utils wget
 # Install a specific version of Chrome.
